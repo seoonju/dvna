@@ -21,17 +21,10 @@ app.use(fileUpload());
 
 // Intialize Session
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'default_secret', // Use environment variable for secret
+  secret: 'keyboard cat',
   resave: true,
   saveUninitialized: true,
-  cookie: {
-    httpOnly: true, // Ensure cookie is sent only over HTTP(S)
-    secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
-    domain: 'example.com', // Set domain for the cookie
-    path: '/', // Set path for the cookie
-    expires: new Date(Date.now() + 60 * 60 * 1000) // Set expiration for the cookie
-  },
-  name: 'session_id' // Use a custom session cookie name
+  cookie: { secure: false }
 }))
 
 // Initialize Passport
