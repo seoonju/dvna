@@ -26,7 +26,7 @@ app.use(session({
   saveUninitialized: true,
   cookie: {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === 'production', // Ensure secure cookies in production
     domain: 'example.com', // Replace with your domain
     path: '/',
     expires: new Date(Date.now() + 60 * 60 * 1000) // 1 hour
