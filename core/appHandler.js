@@ -7,8 +7,9 @@ var serialize = require("node-serialize")
 const Op = db.Sequelize.Op
 
 module.exports.userSearch = function (req, res) {
-	var query = "SELECT name,id FROM Users WHERE login='" + req.body.login + "'";
+	var query = "SELECT name,id FROM Users WHERE login=?";
 	db.sequelize.query(query, {
+		replacements: [req.body.login],
 		model: db.User
 	}).then(user => {
 		if (user.length) {
@@ -36,7 +37,8 @@ module.exports.userSearch = function (req, res) {
 }
 
 module.exports.ping = function (req, res) {
-	exec('ping -c 2 ' + req.body.address, function (err, stdout, stderr) {
+	const address = req.body.address.replace(/[^a-zA-Z0-9.-]/g, '');
+	exec('ping -c 2 ' + address, function (err, stdout, stderr) {
 		output = stdout + stderr
 		res.render('app/ping', {
 			output: output
@@ -184,8 +186,9 @@ module.exports.userEditSubmit = function (req, res) {
 }
 
 module.exports.redirect = function (req, res) {
-	if (req.query.url) {
-		res.redirect(req.query.url)
+	const url = req.query.url;
+	if (url && url.startsWith('http')) {
+		res.redirect(url)
 	} else {
 		res.send('invalid redirect url')
 	}
@@ -193,9 +196,16 @@ module.exports.redirect = function (req, res) {
 
 module.exports.calc = function (req, res) {
 	if (req.body.eqn) {
-		res.render('app/calc', {
-			output: mathjs.eval(req.body.eqn)
-		})
+		try {
+			const result = mathjs.evaluate(req.body.eqn);
+			res.render('app/calc', {
+				output: result
+			});
+		} catch (error) {
+			res.render('app/calc', {
+				output: 'Invalid math expression'
+			});
+		}
 	} else {
 		res.render('app/calc', {
 			output: 'Enter a valid math string like (3+3)*2'
@@ -232,7 +242,7 @@ module.exports.bulkProductsLegacy = function (req,res){
 
 module.exports.bulkProducts =  function(req, res) {
 	if (req.files.products && req.files.products.mimetype=='text/xml'){
-		var products = libxmljs.parseXmlString(req.files.products.data.toString('utf8'), {noent:true,noblanks:true})
+		var products = libxmljs.parseXmlString(req.files.products.data.toString('utf8'), {noent:false,noblanks:true})
 		products.root().childNodes().forEach( product => {
 			var newProduct = new db.Product()
 			newProduct.name = product.childNodes()[0].text()
