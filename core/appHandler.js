@@ -3,12 +3,14 @@ var bCrypt = require('bcrypt')
 const exec = require('child_process').exec;
 var mathjs = require('mathjs')
 var libxmljs = require("libxmljs");
-var serialize = require("node-serialize")
+// Removed insecure serialization library
 const Op = db.Sequelize.Op
 
 module.exports.userSearch = function (req, res) {
-	var query = "SELECT name,id FROM Users WHERE login='" + req.body.login + "'";
+	// Use parameterized queries to prevent SQL Injection
+	var query = "SELECT name,id FROM Users WHERE login=?";
 	db.sequelize.query(query, {
+		replacements: [req.body.login], // Use replacements for parameterized queries
 		model: db.User
 	}).then(user => {
 		if (user.length) {
@@ -185,7 +187,13 @@ module.exports.userEditSubmit = function (req, res) {
 
 module.exports.redirect = function (req, res) {
 	if (req.query.url) {
-		res.redirect(req.query.url)
+		// Validate and sanitize URL to prevent Open Redirect
+		const allowedUrls = ['http://example.com', 'http://anotherexample.com'];
+		if (allowedUrls.includes(req.query.url)) {
+			res.redirect(req.query.url)
+		} else {
+			res.send('invalid redirect url')
+		}
 	} else {
 		res.send('invalid redirect url')
 	}
@@ -215,7 +223,8 @@ module.exports.listUsersAPI = function (req, res) {
 module.exports.bulkProductsLegacy = function (req,res){
 	// TODO: Deprecate this soon
 	if(req.files.products){
-		var products = serialize.unserialize(req.files.products.data.toString('utf8'))
+		// Use JSON.parse instead of insecure deserialization
+		var products = JSON.parse(req.files.products.data.toString('utf8'))
 		products.forEach( function (product) {
 			var newProduct = new db.Product()
 			newProduct.name = product.name
@@ -232,7 +241,8 @@ module.exports.bulkProductsLegacy = function (req,res){
 
 module.exports.bulkProducts =  function(req, res) {
 	if (req.files.products && req.files.products.mimetype=='text/xml'){
-		var products = libxmljs.parseXmlString(req.files.products.data.toString('utf8'), {noent:true,noblanks:true})
+		// Set noent to false to prevent XXE attacks
+		var products = libxmljs.parseXmlString(req.files.products.data.toString('utf8'), {noent:false,noblanks:true})
 		products.root().childNodes().forEach( product => {
 			var newProduct = new db.Product()
 			newProduct.name = product.childNodes()[0].text()
